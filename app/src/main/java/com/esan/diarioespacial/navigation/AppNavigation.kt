@@ -14,6 +14,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.esan.diarioespacial.ui.screens.*
 import com.esan.diarioespacial.ui.viewmodel.ApodViewModel
+import com.esan.diarioespacial.ui.viewmodel.AsteroidViewModel
 
 sealed class BottomNavItem(val route: String, val title: String, val icon: @Composable () -> Unit) {
     object Images : BottomNavItem("images_tab", "Imágenes", { Icon(Icons.Default.Image, contentDescription = null) })
@@ -22,10 +23,12 @@ sealed class BottomNavItem(val route: String, val title: String, val icon: @Comp
 
 @Composable
 fun AppNavigation(
-    viewModel: ApodViewModel = viewModel()
+    apodViewModel: ApodViewModel = viewModel(),
+    asteroidViewModel: AsteroidViewModel = viewModel()
 ) {
     val navController = rememberNavController()
-    val uiState by viewModel.uiState.collectAsState()
+    val apodUiState by apodViewModel.uiState.collectAsState()
+    val asteroidUiState by asteroidViewModel.uiState.collectAsState()
 
     val items = listOf(
         BottomNavItem.Images,
@@ -71,25 +74,26 @@ fun AppNavigation(
             startDestination = BottomNavItem.Images.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            // --- ALUMNO 1: APOD (IMÁGENES) ---
             composable(BottomNavItem.Images.route) {
                 ApodListScreen(
-                    uiState = uiState,
-                    onToggleFavorite = { viewModel.toggleFavorite(it) },
+                    uiState = apodUiState,
+                    onToggleFavorite = { apodViewModel.toggleFavorite(it) },
                     onApodClick = { apod ->
                         navController.navigate("apod_detail/${apod.date}")
                     },
                     onOpenFavorites = {
                         navController.navigate("apod_favorites")
                     },
-                    onRefresh = { viewModel.loadLast7DaysApod() }
+                    onRefresh = { apodViewModel.loadLast7DaysApod() }
                 )
             }
 
             composable("apod_favorites") {
                 ApodFavoritesScreen(
-                    favoriteApods = uiState.favoriteApods,
+                    favoriteApods = apodUiState.favoriteApods,
                     onBack = { navController.popBackStack() },
-                    onToggleFavorite = { viewModel.toggleFavorite(it) },
+                    onToggleFavorite = { apodViewModel.toggleFavorite(it) },
                     onApodClick = { apod ->
                         navController.navigate("apod_detail/${apod.date}")
                     }
@@ -101,18 +105,56 @@ fun AppNavigation(
                 arguments = listOf(navArgument("date") { type = NavType.StringType })
             ) { backStackEntry ->
                 val date = backStackEntry.arguments?.getString("date")
-                val apod = uiState.apods.find { it.date == date }
-                    ?: uiState.favoriteApods.find { it.date == date }
+                val apod = apodUiState.apods.find { it.date == date }
+                    ?: apodUiState.favoriteApods.find { it.date == date }
 
                 ApodDetailScreen(
                     apod = apod,
                     onBack = { navController.popBackStack() },
-                    onToggleFavorite = { viewModel.toggleFavorite(it) }
+                    onToggleFavorite = { apodViewModel.toggleFavorite(it) }
                 )
             }
 
+            // --- ALUMNO 2: NEO WS (ASTEROIDES) ---
             composable(BottomNavItem.Asteroids.route) {
-                AsteroidsPlaceholderScreen()
+                AsteroidListScreen(
+                    uiState = asteroidUiState,
+                    onToggleFavorite = { asteroidViewModel.toggleFavorite(it) },
+                    onFilterChange = { asteroidViewModel.setOnlyHazardousFilter(it) },
+                    onAsteroidClick = { asteroid ->
+                        navController.navigate("asteroid_detail/${asteroid.id}")
+                    },
+                    onOpenFavorites = {
+                        navController.navigate("asteroid_favorites")
+                    },
+                    onRefresh = { asteroidViewModel.loadLast7DaysAsteroids() }
+                )
+            }
+
+            composable("asteroid_favorites") {
+                AsteroidFavoritesScreen(
+                    favoriteAsteroids = asteroidUiState.favoriteAsteroids,
+                    onBack = { navController.popBackStack() },
+                    onToggleFavorite = { asteroidViewModel.toggleFavorite(it) },
+                    onAsteroidClick = { asteroid ->
+                        navController.navigate("asteroid_detail/${asteroid.id}")
+                    }
+                )
+            }
+
+            composable(
+                route = "asteroid_detail/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("id")
+                val asteroid = asteroidUiState.asteroids.find { it.id == id }
+                    ?: asteroidUiState.favoriteAsteroids.find { it.id == id }
+
+                AsteroidDetailScreen(
+                    asteroid = asteroid,
+                    onBack = { navController.popBackStack() },
+                    onToggleFavorite = { asteroidViewModel.toggleFavorite(it) }
+                )
             }
         }
     }
