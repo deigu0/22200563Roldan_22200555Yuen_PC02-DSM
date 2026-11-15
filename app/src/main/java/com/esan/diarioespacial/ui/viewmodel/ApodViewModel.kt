@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -57,10 +58,15 @@ class ApodViewModel(application: Application) : AndroidViewModel(application) {
             val endDate = today.format(formatter)
 
             val result = repository.fetchApods(startDate, endDate)
-            result.onFailure { error ->
+            result.onFailure { exception ->
+                val message = if (exception is HttpException && exception.code() == 429) {
+                    "⚠️ Límite de consultas excedido (HTTP 429). Si estás usando DEMO_KEY, registra una clave gratuita en api.nasa.gov y agrégala en local.properties (NASA_API_KEY=tu_clave)."
+                } else {
+                    exception.localizedMessage ?: "Error al cargar datos de la API NASA"
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.localizedMessage ?: "Error al cargar datos de la API NASA"
+                    errorMessage = message
                 )
             }.onSuccess {
                 _uiState.value = _uiState.value.copy(isLoading = false)
